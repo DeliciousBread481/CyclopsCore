@@ -22,6 +22,9 @@ public abstract class IngredientMapWrappedAdapter<T, M, V, C extends Map<Ingredi
         extends IngredientMapAdapter<T, M, V> {
 
     private final C collection;
+    
+    private IngredientSet<T, M> cachedKeySet = null;
+    private int cachedSize = -1;
 
     protected IngredientMapWrappedAdapter(IngredientComponent<T, M> component, C collection) {
         super(component);
@@ -39,18 +42,29 @@ public abstract class IngredientMapWrappedAdapter<T, M, V, C extends Map<Ingredi
     @Override
     public void clear() {
         this.collection.clear();
+        invalidateCache();
     }
 
     @Nullable
     @Override
-    public V put(T key, V value) {
-        return this.collection.put(wrap(key), value);
+    public V put(T key, V value) {  
+        V result = this.collection.put(wrap(key), value);  
+        
+        if (result == null) {  
+            invalidateCache();  
+        }  
+        return result;  
     }
 
     @Nullable
     @Override
-    public V remove(T key) {
-        return this.collection.remove(wrap(key));
+    public V remove(T key)  {  
+        V result = this.collection.remove(wrap(key));  
+        
+        if (result != null) {  
+            invalidateCache();  
+        }  
+        return result;  
     }
 
     @Override
@@ -70,8 +84,15 @@ public abstract class IngredientMapWrappedAdapter<T, M, V, C extends Map<Ingredi
     }
 
     @Override
-    public IngredientSet<T, M> keySet() {
-        return new IngredientHashSet<>(this.getComponent(), Sets.newHashSet(this.collection.keySet()));
+    public IngredientSet<T, M> keySet()  {  
+        int currentSize = this.collection.size();  
+        if (cachedKeySet != null && cachedSize == currentSize) {  
+            return cachedKeySet;  
+        }  
+          
+        cachedKeySet = new IngredientHashSet<>(this.getComponent(), Sets.newHashSet(this.collection.keySet()));  
+        cachedSize = currentSize;  
+        return cachedKeySet;  
     }
 
     @Override
@@ -83,6 +104,11 @@ public abstract class IngredientMapWrappedAdapter<T, M, V, C extends Map<Ingredi
     public Iterator<Map.Entry<T, V>> iterator() {
         return Iterators.transform(this.collection.keySet().iterator(),
                 key -> new AbstractMap.SimpleEntry<>(key.getInstance(), this.collection.get(key)));
+    }
+    
+    private void invalidateCache() {  
+        cachedKeySet = null;  
+        cachedSize = -1;  
     }
 
 }
