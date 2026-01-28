@@ -21,7 +21,7 @@ apply plugin: 'jacoco'
 apply plugin: 'maven'  
   
 // 版本配置  
-version = config.mod_version  
+version = "1.6.7"
 group = "org.cyclops.cyclopscore"  
 archivesBaseName = "CyclopsCore"  
 sourceCompatibility = 1.8  
@@ -76,12 +76,10 @@ dependencies {
         exclude group: 'org.ow2.asm', module: 'asm-debug-all'  
     }  
     deobfCompile "mezz.jei:jei_${config.jei_version}:api"  
+    deobfCompile "org.cyclops.commoncapabilities:CommonCapabilities:${config.minecraft_version}-${config.commoncapabilities_version}:deobf"
     provided "org.projectlombok:lombok:1.16.4"  
     testCompile "junit:junit:4.12"  
-    testCompile "org.mockito:mockito-core:1.+"  
-      
-    // 部署相关依赖  
-    deployerJars "org.apache.maven.wagon:wagon-ftp:2.2"  
+    testCompile "org.mockito:mockito-core:1.+"   
 }
 
 minecraft {  
