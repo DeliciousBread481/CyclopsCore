@@ -1,0 +1,133 @@
+buildscript {  
+    repositories {  
+        mavenCentral()  
+        maven {  
+            name = "forge"  
+            url = "https://files.minecraftforge.net/maven"  
+        }  
+    }  
+    dependencies {  
+        classpath 'net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT'  
+    }  
+}  
+  
+plugins {  
+    id 'com.matthewprenger.cursegradle' version '1.4.0'  
+    id 'com.github.kt3k.coveralls' version '2.8.2'  
+}  
+  
+apply plugin: 'net.minecraftforge.gradle.forge'  
+apply plugin: 'jacoco'  
+apply plugin: 'maven'  
+  
+// 版本配置  
+version = config.mod_version  
+group = "org.cyclops.cyclopscore"  
+archivesBaseName = "CyclopsCore"  
+sourceCompatibility = 1.8  
+targetCompatibility = 1.8  
+  
+// 扩展属性管理版本号  
+ext {  
+    // 从 build.properties 加载配置  
+    configFile = file "build.properties"  
+    configFile.withReader {  
+        def prop = new Properties()  
+        prop.load(it)  
+        config = new ConfigSlurper().parse prop  
+    }  
+      
+    // 构建号处理  
+    buildnumber = "DEV"  
+    if (System.getenv().BUILD_NUMBER)  
+        project.buildnumber = System.getenv().BUILD_NUMBER  
+    if (System.getenv().TRAVIS_BUILD_NUMBER)  
+        project.buildnumber = System.getenv().TRAVIS_BUILD_NUMBER  
+    if (System.getenv().RELEASE || System.getenv().TRAVIS_TAG)  
+        project.buildnumber = "RELEASE"  
+    logger.lifecycle "BUILDING VERSION: " + project.buildnumber  
+}  
+  
+// 仓库配置 - 优先使用本地 libs 文件夹  
+repositories {  
+    flatDir {  
+        dirs 'libs'  // 优先从本地 libs 文件夹加载  
+    }  
+    mavenLocal()  
+    mavenCentral()  
+    maven {  
+        name "Mobius Repo"  
+        url "https://mobiusstrip.eu/maven"  
+    }  
+    maven {  
+        name "Blamejared Maven Repo"  
+        url "https://blamejared.com/maven"  
+    }  
+    maven {  
+        name 'DVS1 Maven FS'  
+        url 'https://dvs1.progwml6.com/files/maven'  
+    }  
+}  
+  
+// 依赖配置  
+dependencies {  
+    // 优先尝试从 libs 文件夹加载，如果不存在则从远程仓库加载  
+    deobfCompile("CraftTweaker2:CraftTweaker2-API:${config.crafttweakerapi_version}") {  
+        exclude group: 'org.ow2.asm', module: 'asm-debug-all'  
+    }  
+    deobfCompile "mezz.jei:jei_${config.jei_version}:api"  
+    provided "org.projectlombok:lombok:1.16.4"  
+    testCompile "junit:junit:4.12"  
+    testCompile "org.mockito:mockito-core:1.+"  
+      
+    // 部署相关依赖  
+    deployerJars "org.apache.maven.wagon:wagon-ftp:2.2"  
+}
+
+minecraft {  
+    version = "${config.minecraft_version}-${config.forge_version}"  
+    runDir = "run"  
+      
+    replaceIn "Reference.java"  
+    replace "@VERSION@", project.version  
+    replace "@MC_VERSION@", project.config.minecraft_version  
+    replace "@FORGE_VERSION@", project.config.forge_version  
+    replace "@BUILD_NUMBER@", project.buildnumber  
+    replace "@FINGERPRINT@", project.config.fingerprint  
+      
+    mappings = "${config.mcp_mappings_version}"  
+}  
+  
+// 版本逻辑  
+if (project.buildnumber.equals("RELEASE"))  
+    version = "${config.minecraft_version}-${config.mod_version}"  
+else  
+    version = "${config.minecraft_version}-${config.mod_version}-${buildnumber}"  
+  
+// 资源处理  
+processResources {  
+    inputs.property "version", project.version  
+    inputs.property "mcversion", project.minecraft.version  
+  
+    from(sourceSets.main.resources.srcDirs) {  
+        include 'mcmod.info'  
+        expand 'version':project.version, 'mcversion':project.minecraft.version  
+    }  
+      
+    from(sourceSets.main.resources.srcDirs) {  
+        exclude 'mcmod.info'  
+    }  
+  
+    rename '(.+_at.cfg)', 'META-INF/$1'  
+}  
+  
+// JAR 配置  
+jar {  
+    manifest {  
+        attributes 'FMLAT': 'cyclopscore_at.cfg'  
+    }  
+}
+
+
+  
+
